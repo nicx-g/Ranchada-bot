@@ -20,23 +20,52 @@ client.on("message", async (message) => {
     const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
     const command = args.shift();
 
+    if(command == 'help') {
+        let embed = new MessageEmbed()
+        .setTitle('Comandos para usar en el bot, no pruebes otro porque no funca')
+        .addField('-p / -play', 'Poné lo que se te cante, por ahora sólo soporta links de youtube y búsquedas a mano. Ej: -p marcha peronista. Con spotify no funca, por ahora')
+        .addField('-stop', 'Limpia la queue, es decir, se vacían todas las canciones, no reproduce nada')
+        .addField('-pause', 'Pausa la música')
+        .addField('-resume', 'Reanuda la música')
+        .addField('-autoplay', 'Esto es para desactivar/activar el autoplay')
+        .addField('-skip / -next / -n', 'Va a saltear a la siguiente canción')
+        .addField('-queue', 'Te va a tirar el listado de canciones que va a sonar')
+        .addField('-leave', 'Para que el bot se vaya del voice')
+        .addField('-setVolume', 'Para setear el volumen, inicialmente va a estar en 25 cuando empiece una queue')
+        .addField('-volume', 'Para saber cuál es el volumen actual del bot')
+        .setFooter('No hay más')
+        message.channel.send(embed)
+    }
+    
     if(command == 'play' || command == 'p') {
+        let estaPausado = distube.isPaused()
+        
+        if(estaPausado === true) {
+            distube.resume()
+        }
+
         distube.play(message, args.join(" "))
     }
 
     if (command == "stop") {
         distube.stop(message);
-        message.channel.send('Se paró toda la música')
+        let embed = new MessageEmbed()
+        .setTitle('Se vació la queue')
+        message.channel.send(embed)
     }
 
     if(command == 'pause') {
         distube.pause(message);
-        message.channel.send('Pausaste la canción')
+        let embed = new MessageEmbed()
+        .setTitle('Se pausó la música')
+        message.channel.send(embed)
     }
 
     if(command == 'resume') {
         distube.resume(message)
-        message.channel.send('Pusiste de nuevo la musica')
+        let embed = new MessageEmbed()
+        .setTitle('La música se reanudó')
+        message.channel.send(embed)
     }
 
     if (command == "autoplay") {
@@ -48,8 +77,20 @@ client.on("message", async (message) => {
         distube.skip(message);
     }
 
-    if(command == 'roja') {
-        message.channel.send('@Eloobosted#0236 dale pibe')
+    if(command == 'leave'){
+        message.member.voice.channel.leave()
+        message.react('👋')
+    }
+
+    if(command == 'setVolume'){
+        distube.setVolume(message, args[0])
+    }
+    
+    if(command == 'volume'){
+        let queue = distube.getQueue(message)
+        let embed = new MessageEmbed()
+        .setTitle(`El volumen es ${queue.volume}}`)
+        message.channel.send(embed)
     }
 
     if (command == "queue") {
@@ -97,6 +138,10 @@ distube
             .addField('Y la puso: (mentira ninguno de acá la pone)', `${song.user}`)
             .setColor('PURPLE')
         message.channel.send(embed)
+    })
+    .on('initQueue', queue => {
+        queue.volume = 25
+        queue.autoplay = on
     })
 
     client.login(config.token)
