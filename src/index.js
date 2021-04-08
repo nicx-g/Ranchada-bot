@@ -23,6 +23,7 @@ client.on("message", async (message) => {
     if(command == 'help') {
         let embed = new MessageEmbed()
         .setTitle('Comandos para usar en el bot, no pruebes otro porque no funca')
+        .setColor('PURPLE')
         .addField('-p / -play', 'Poné lo que se te cante, por ahora sólo soporta links de youtube y búsquedas a mano. Ej: -p marcha peronista. Con spotify no funca, por ahora')
         .addField('-stop', 'Limpia la queue, es decir, se vacían todas las canciones, no reproduce nada')
         .addField('-pause', 'Pausa la música')
@@ -30,41 +31,35 @@ client.on("message", async (message) => {
         .addField('-autoplay', 'Esto es para desactivar/activar el autoplay')
         .addField('-skip / -next / -n', 'Va a saltear a la siguiente canción')
         .addField('-queue', 'Te va a tirar el listado de canciones que va a sonar')
-        .addField('-leave', 'Para que el bot se vaya del voice')
-        .addField('-setVolume', 'Para setear el volumen, inicialmente va a estar en 25 cuando empiece una queue')
+        .addField('-leave', 'Para que el bot se vaya del voice, no me lo dejes solo')
+        .addField('-setVolume', 'Para setear el volumen, inicialmente va a estar en 25 cuando empiece una queue. Sólo va de 0 a 100 el volumen')
         .addField('-volume', 'Para saber cuál es el volumen actual del bot')
         .setFooter('No hay más')
         message.channel.send(embed)
     }
     
     if(command == 'play' || command == 'p') {
-        let estaPausado = distube.isPaused()
-        
-        if(estaPausado === true) {
-            distube.resume()
-        }
-
         distube.play(message, args.join(" "))
     }
 
     if (command == "stop") {
         distube.stop(message);
         let embed = new MessageEmbed()
-        .setTitle('Se vació la queue')
+        .setDescription('Se vació la queue')
         message.channel.send(embed)
     }
 
     if(command == 'pause') {
         distube.pause(message);
         let embed = new MessageEmbed()
-        .setTitle('Se pausó la música')
+        .setDescription('Se pausó la música')
         message.channel.send(embed)
     }
 
     if(command == 'resume') {
         distube.resume(message)
         let embed = new MessageEmbed()
-        .setTitle('La música se reanudó')
+        .setDescription('La música se reanudó')
         message.channel.send(embed)
     }
 
@@ -75,10 +70,11 @@ client.on("message", async (message) => {
 
     if(command == 'skip' || command == 'next' || command == 'n') {
         distube.skip(message);
+        message.react('522626958899675146')
     }
 
     if(command == 'leave'){
-        message.member.voice.channel.leave()
+        const leave = await message.member.voice.channel.leave()
         message.react('👋')
     }
 
@@ -88,9 +84,12 @@ client.on("message", async (message) => {
     
     if(command == 'volume'){
         let queue = distube.getQueue(message)
-        let embed = new MessageEmbed()
-        .setTitle(`El volumen es ${queue.volume}}`)
-        message.channel.send(embed)
+        if(queue){
+            let embed = new MessageEmbed()
+            .setDescription(`El volumen es ${queue.volume}`)
+            .setColor('PURPLE')
+            message.channel.send(embed)
+        }
     }
 
     if (command == "queue") {
@@ -111,7 +110,7 @@ client.on("message", async (message) => {
         
             // }
             message.channel.send('Current queue:\n' + queue.songs.map((song, id) =>
-                `**${id+1}**. [${song.name}] - \`${song.formattedDuration}\` \n (${song.url})`
+                `${id < 50 ? `**${id+1}**. [${song.name}] - \`${song.formattedDuration}\` \n (${song.url})` : ''}`
             ).join("\n"));
         } else{
             message.channel.send('no hay canciones')
@@ -141,7 +140,7 @@ distube
     })
     .on('initQueue', queue => {
         queue.volume = 25
-        queue.autoplay = on
+        queue.autoplay = "on"
     })
 
     client.login(config.token)
