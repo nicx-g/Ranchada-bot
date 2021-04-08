@@ -7,7 +7,7 @@ const {Client, MessageEmbed} = require('discord.js'),
         token: process.env.DISCORD_TOKEN
     };
     
-
+client.options.http.api = "https://discord.com/api"
 const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false });
 
 client.on('ready', () => {
