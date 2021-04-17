@@ -32,8 +32,9 @@ client.on("message", async (message) => {
         .addField('-skip / -next / -n', 'Va a saltear a la siguiente canción')
         .addField('-queue', 'Te va a tirar el listado de canciones que va a sonar')
         .addField('-leave', 'Para que el bot se vaya del voice, no me lo dejes solo')
-        .addField('-setVolume', 'Para setear el volumen, inicialmente va a estar en 25 cuando empiece una queue. Sólo va de 0 a 100 el volumen')
+        .addField('-setvolume', 'Para setear el volumen, inicialmente va a estar en 25 cuando empiece una queue. Sólo va de 0 a 100 el volumen')
         .addField('-volume', 'Para saber cuál es el volumen actual del bot')
+        .addField('-shuffle', 'Para poner el modo aleatorio')
         .setFooter('No hay más')
         message.channel.send(embed)
     }
@@ -46,6 +47,7 @@ client.on("message", async (message) => {
         distube.stop(message);
         let embed = new MessageEmbed()
         .setDescription('Se vació la queue')
+        .setColor('PURPLE')
         message.channel.send(embed)
     }
 
@@ -53,6 +55,7 @@ client.on("message", async (message) => {
         distube.pause(message);
         let embed = new MessageEmbed()
         .setDescription('Se pausó la música')
+        .setColor('PURPLE')
         message.channel.send(embed)
     }
 
@@ -60,12 +63,16 @@ client.on("message", async (message) => {
         distube.resume(message)
         let embed = new MessageEmbed()
         .setDescription('La música se reanudó')
+        .setColor('PURPLE')
         message.channel.send(embed)
     }
 
     if (command == "autoplay") {
         let mode = distube.toggleAutoplay(message);
-        message.channel.send("Set autoplay mode to `" + (mode ? "On" : "Off") + "`");
+        let embed = new MessageEmbed()
+        .setDescription(`El autoplay está ${mode ? 'prendido' : 'apagado'}`)
+        .setColor('PURPLE')
+        message.channel.send(embed);
     }
 
     if(command == 'skip' || command == 'next' || command == 'n') {
@@ -78,8 +85,9 @@ client.on("message", async (message) => {
         message.react('👋')
     }
 
-    if(command == 'setVolume'){
+    if(command == 'setvolume'){
         distube.setVolume(message, args[0])
+        message.react('👌')
     }
     
     if(command == 'volume'){
@@ -92,48 +100,59 @@ client.on("message", async (message) => {
         }
     }
 
-    if (command == "queue") {
+    if (command == 'shuffle') {
+        distube.shuffle(message)
+        message.react('👌')
+    }
+    
+    if (command == "queue" || command == 'q') {
         let queue = distube.getQueue(message);
         if(queue) {
-            // let embed = {
-            //     color: "PURPLE",
-            //     author: {
-            //         name: 'Curren Queue',
-            //         icon_url: "https://image.flaticon.com/icons/png/512/49/49097.png"
-            //     },
-            //     fields:[
-            //         {
-            //             name: `**1.** ${queue.songs[1].name} `,
-            //             value: queue.songs[1].url
-            //         }
-            //     ]
-        
-            // }
-            message.channel.send('Current queue:\n' + queue.songs.map((song, id) =>
-                `${id < 50 ? `**${id+1}**. [${song.name}] - \`${song.formattedDuration}\` \n (${song.url})` : ''}`
-            ).join("\n"));
+            let songs = []
+            queue.songs.map((cancion, id) => {
+                songs.push({
+                    "name": `\`${id} | ${cancion.name} | ${cancion.formattedDuration}\``,
+                    "value": `***(${cancion.url})***`
+                })
+            })
+            let embed = {
+                color: "PURPLE",
+                author: {
+                    name: 'Current Queue',
+                    icon_url: "https://image.flaticon.com/icons/png/512/49/49097.png"
+                },
+                fields: songs
+            }
+            
+            setTimeout(() => {
+                message.channel.send({embed: embed})
+            }, 1000)
+            
         } else{
-            message.channel.send('no hay canciones')
+            let embed = new MessageEmbed()
+            .setDescription('No hay canciones activas')
+            .setColor('PURPLE')
+            message.channel.send(embed)
         }
     }
 })  
 
 distube
     .on('playSong', (message, queue, song) => {
-        let urlAvatar = message.author.avatarURL()
+        let fotoAutor = "https://image.flaticon.com/icons/png/512/49/49097.png"
         let embed = new MessageEmbed()
-            .setAuthor(message.author.tag, urlAvatar)
-            .addField('Está sonando', `\`${song.name} - [${song.formattedDuration}]\``)
+            .setAuthor('Está sonando', fotoAutor)
+            .setDescription(`\`${song.name} | [${song.formattedDuration}]\``)
             .addField('Y la puso: (mentira ninguno de acá la pone)', `${song.user}`)
             .setColor('PURPLE')
         message.channel.send(embed)
         client.user.setActivity(song.name, {type: "LISTENING"})
     })
     .on('addSong', (message, queue, song) => {
-        let urlAvatar = message.author.avatarURL()
+        let fotoAutor = "https://image.flaticon.com/icons/png/512/49/49097.png"
         let embed = new MessageEmbed()
-            .setAuthor(message.author.tag, urlAvatar)
-            .addField('Se agregó', `\`${song.name} - [${song.formattedDuration}]\``)
+            .setAuthor('Se agregó una nueva canción', fotoAutor)
+            .setDescription(`\`${song.name} | [${song.formattedDuration}]\``)
             .addField('Y la puso: (mentira ninguno de acá la pone)', `${song.user}`)
             .setColor('PURPLE')
         message.channel.send(embed)
