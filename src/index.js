@@ -1,4 +1,6 @@
+//ENV
 require('dotenv').config();
+//Discord y Distube
 const {Client, MessageEmbed} = require('discord.js'),
     DisTube = require('distube'),
     client = new Client(),
@@ -6,9 +8,14 @@ const {Client, MessageEmbed} = require('discord.js'),
         prefix: "-",
         token: process.env.DISCORD_TOKEN
     };
-    
+//Config Distube
 client.options.http.api = "https://discord.com/api"
-const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false });
+const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false, leaveOnEmpty: false });
+//Spotify Url info
+const {getTracks} = require("spotify-url-info")
+var isSpotifyPlaylist = false;
+var isMessageSent = false;
+var playListLength = '';
 
 client.on('ready', () => {
     console.log('tamos ready pa')
@@ -40,7 +47,29 @@ client.on("message", async (message) => {
     }
     
     if(command == 'play' || command == 'p') {
-        distube.play(message, args.join(" "))
+        isSpotifyPlaylist = false;
+        if(args.join(' ').includes("https://open.spotify.com/playlist")){
+            let dataPlayList = await getTracks(args.join(' '));
+            let preCancionesYArtistas = []
+            let cancionesYArtistas = []
+            dataPlayList.map((canciones) => {
+                preCancionesYArtistas.push({
+                    nombre: canciones.name,
+                    artista: canciones.artists.map((artista) => {return artista.name}).join(' j')
+                })
+            })
+            preCancionesYArtistas.map((cancion) => {
+                cancionesYArtistas.push(`${cancion.nombre} ${cancion.artista}`)
+            })
+            playListLength = cancionesYArtistas.length;
+            isSpotifyPlaylist = true;
+            cancionesYArtistas.map(item => {
+                distube.play(message, item)
+            })
+            isMessageSent = false
+        } else {
+            distube.play(message, args.join(" "))
+        }
     }
 
     if (command == "stop") {
@@ -110,18 +139,16 @@ client.on("message", async (message) => {
         if(queue) {
             let songs = []
             queue.songs.map((cancion, id) => {
-                songs.push({
-                    "name": `\`${id} | ${cancion.name} | ${cancion.formattedDuration}\``,
-                    "value": `***(${cancion.url})***`
-                })
+                songs.push(`\`${id < 10 ? `0${id}` : id} | ${cancion.name} | ${cancion.formattedDuration}\``)
             })
+            let description = songs.join('\n')
             let embed = {
                 color: "PURPLE",
                 author: {
                     name: 'Current Queue',
                     icon_url: "https://image.flaticon.com/icons/png/512/49/49097.png"
                 },
-                fields: songs
+                description: description
             }
             
             setTimeout(() => {
@@ -138,24 +165,39 @@ client.on("message", async (message) => {
 })  
 
 distube
-    .on('playSong', (message, queue, song) => {
+    .on('playSong', (queue, song) => {
         let fotoAutor = "https://image.flaticon.com/icons/png/512/49/49097.png"
         let embed = new MessageEmbed()
             .setAuthor('Está sonando', fotoAutor)
             .setDescription(`\`${song.name} | [${song.formattedDuration}]\``)
             .addField('Y la puso: (mentira ninguno de acá la pone)', `${song.user}`)
             .setColor('PURPLE')
-        message.channel.send(embed)
+        queue.textChannel.send(embed)
         client.user.setActivity(song.name, {type: "LISTENING"})
     })
-    .on('addSong', (message, queue, song) => {
-        let fotoAutor = "https://image.flaticon.com/icons/png/512/49/49097.png"
-        let embed = new MessageEmbed()
-            .setAuthor('Se agregó una nueva canción', fotoAutor)
-            .setDescription(`\`${song.name} | [${song.formattedDuration}]\``)
-            .addField('Y la puso: (mentira ninguno de acá la pone)', `${song.user}`)
+    .on('addSong', (queue, song) => {
+        if(isSpotifyPlaylist === true && isMessageSent === false){
+            isMessageSent = true;
+            let embed = new MessageEmbed()
+            .setDescription(`\`Se agregaron ${playListLength} canciones a la queue\` [${queue.songs[0].user}]`)
             .setColor('PURPLE')
-        message.channel.send(embed)
+            queue.textChannel.send(embed)
+        } else if(isSpotifyPlaylist === false){
+            let fotoAutor = "https://image.flaticon.com/icons/png/512/49/49097.png"
+            let embed = new MessageEmbed()
+                .setAuthor('Se agregó una nueva canción', fotoAutor)
+                .setDescription(`\`${song.name} | [${song.formattedDuration}]\``)
+                .addField('Y la puso: (mentira ninguno de acá la pone)', `${song.user}`)
+                .setColor('PURPLE')
+            queue.textChannel.send(embed)
+        }
+    })
+    .on('error', (channel, error) => {
+        console.log(error)
+        let embed = new MessageEmbed()
+        .setDescription('Se rompió algo, intentalo de nuevo, probá más tarde o avisale al corren')
+        .setColor('PURPLE')
+        channel.send(embed)
     })
     .on('initQueue', queue => {
         queue.volume = 25
