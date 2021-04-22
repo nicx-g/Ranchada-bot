@@ -10,7 +10,7 @@ const {Client, MessageEmbed} = require('discord.js'),
     };
 //Config Distube
 client.options.http.api = "https://discord.com/api"
-const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false, leaveOnEmpty: false });
+const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false});
 //Spotify Url info
 const {getTracks} = require("spotify-url-info")
 var isSpotifyPlaylist = false;
@@ -26,26 +26,100 @@ client.on("message", async (message) => {
     if (!message.content.startsWith(config.prefix)) return;
     const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
     const command = args.shift();
+    let comandos = [
+        {
+            name: `${config.prefix}p / ${config.prefix}play`,
+            value: `Poné lo que se te cante. PlayLists de Spotify sólo soporta hasta 100 tracks. Ej: \`${config.prefix}p marcha peronista / link de youtube / link de Spotify\`.`
+        },
+        {
+            name: `${config.prefix}stop`,
+            value: 'Vacías la queue y se detiene la música'
+        },
+        {
+            name: `${config.prefix}pause`,
+            value: 'Pausa la música. Por alguna razón que desconozco no funciona por el momento'
+        },
+        {
+            name: `${config.prefix}resume`,
+            value: 'Despausa la música'
+        },
+        {
+            name: `${config.prefix}autoplay`,
+            value: 'Para activar/desactivar el autoplay. Cuando suene una canción podés comprobar si está prendido o apagado'
+        },
+        {
+            name: `${config.prefix}skip / ${config.prefix}next / ${config.prefix}n`,
+            value: 'Para pasar a la siguiente canción'
+        },
+        {
+            name: `${config.prefix}queue / ${config.prefix}q`,
+            value: `Te va a tirar el listado de las primeras 20 canciones que va a sonar, si querés saber las demás canciones podés colocar otro número. Ej: \`${config.prefix}queue 20\` te va a mostrar de la canción 20 hasta la 40`
+        },
+        {
+            name: `${config.prefix}leave`,
+            value: 'Para que el bot se vaya del voice, no me lo dejes solo'
+        },
+        {
+            name: `${config.prefix}setvolume`,
+            value: 'Para setear el volumen, inicialmente va a estar en 25 cuando empiece una queue. Sólo va de 0 a 100 el volumen'
+        },
+        {
+            name: `${config.prefix}volume`,
+            value: 'Para saber cuál es el volumen actual del bot aunque ya te aparezca cuando esté sonando una canción'
+        },
+        {
+            name: `${config.prefix}shuffle`,
+            value: 'Para poner el modo aleatorio'
+        },
+        {
+            name: `${config.prefix}remove`,
+            value: `Para eliminar una canción de la queue, podés borrarla mediante índice o la última canción. Para saber el índice de una canción lo podés ver con ${config.prefix}queue. Ej: \`${config.prefix}remove last / ${config.prefix}remove 5\``
+        },
+    ]
 
-    if(command == 'help') {
+    const comprobarComandoCorrecto = () => {
+        let esComando = false;
+        let preComandosFiltrados = []
+        let comandosFiltrados = []
+        comandos.map(item => {
+            if(item.name.split(' ').join('').includes('/')){
+                preComandosFiltrados.push(item.name.split(' ').join('').split('/'))
+            } else {
+                preComandosFiltrados.push(item.name.split(' ').join(''))
+            }
+        })
+        preComandosFiltrados.map(item => {
+            if(Array.isArray(item) === true){
+                item.map(item => comandosFiltrados.push(item))
+            } else {
+                comandosFiltrados.push(item)
+            }
+        })
+        comandosFiltrados.map(item => {
+            if(item == `${config.prefix}${command}`){
+                esComando = true
+            }
+        })
+        return esComando
+    }
+    let esComando = comprobarComandoCorrecto()
+    if(esComando === false && command !== 'help') {
         let embed = new MessageEmbed()
-        .setTitle('Comandos para usar en el bot, no pruebes otro porque no funca')
+        .setDescription(`Le pifiaste al comando padre. Poné \`${config.prefix}help\` para ver todos los comandos. Si querés usar uno y no está decile al corren`)
         .setColor('PURPLE')
-        .addField('-p / -play', 'Poné lo que se te cante, por ahora sólo soporta links de youtube y búsquedas a mano. Ej: -p marcha peronista. Con spotify no funca, por ahora')
-        .addField('-stop', 'Limpia la queue, es decir, se vacían todas las canciones, no reproduce nada')
-        .addField('-pause', 'Pausa la música')
-        .addField('-resume', 'Reanuda la música')
-        .addField('-autoplay', 'Esto es para desactivar/activar el autoplay')
-        .addField('-skip / -next / -n', 'Va a saltear a la siguiente canción')
-        .addField('-queue', 'Te va a tirar el listado de canciones que va a sonar')
-        .addField('-leave', 'Para que el bot se vaya del voice, no me lo dejes solo')
-        .addField('-setvolume', 'Para setear el volumen, inicialmente va a estar en 25 cuando empiece una queue. Sólo va de 0 a 100 el volumen')
-        .addField('-volume', 'Para saber cuál es el volumen actual del bot')
-        .addField('-shuffle', 'Para poner el modo aleatorio')
-        .setFooter('No hay más')
         message.channel.send(embed)
     }
-    
+
+    if(command == 'help') {
+        let embed = {
+            title: 'Comandos para usar en el bot, no uses otro porque no funca',
+            color: 'PURPLE',
+            fields: comandos,
+            footer: {text: 'No hay más'}
+        }
+        message.channel.send({embed})
+    }
+
     if(command == 'play' || command == 'p') {
         isSpotifyPlaylist = false;
         if(args.join(' ').includes("https://open.spotify.com/playlist")){
@@ -96,6 +170,17 @@ client.on("message", async (message) => {
         message.channel.send(embed)
     }
 
+    if(command == 'remove') {
+        let queue = distube.getQueue(message);
+        if(args[0] === 'last'){
+            queue.songs.pop();
+            message.react('👌')
+        } else {
+            queue.songs.splice(Number(args.join('')), 1)
+            message.react('👌')
+        }
+    }
+
     if (command == "autoplay") {
         let mode = distube.toggleAutoplay(message);
         let embed = new MessageEmbed()
@@ -115,7 +200,7 @@ client.on("message", async (message) => {
     }
 
     if(command == 'setvolume'){
-        distube.setVolume(message, args[0])
+        distube.setVolume(message, Number(args[0]))
         message.react('👌')
     }
     
@@ -137,10 +222,13 @@ client.on("message", async (message) => {
     if (command == "queue" || command == 'q') {
         let queue = distube.getQueue(message);
         if(queue) {
-            let songs = []
+            let songsWithNull = []
+            let minimo = args.join('')
+            let maximo = Number(args.join('')) + 20
             queue.songs.map((cancion, id) => {
-                songs.push(`\`${id < 10 ? `0${id}` : id} | ${cancion.name} | ${cancion.formattedDuration}\``)
+                songsWithNull.push(id <= maximo && id >= minimo ? `\`${id < 10 ? `0${id}` : id } | ${cancion.name} | ${cancion.formattedDuration}\`` : null)
             })
+            let songs = songsWithNull.filter(item => item !== null)
             let description = songs.join('\n')
             let embed = {
                 color: "PURPLE",
@@ -148,7 +236,11 @@ client.on("message", async (message) => {
                     name: 'Current Queue',
                     icon_url: "https://image.flaticon.com/icons/png/512/49/49097.png"
                 },
-                description: description
+                description: songs.length === 0 ? 'No hay canciones con este rango de índices, probá con un número menor' : description,
+                footer: {
+                    text: `Hay ${queue.songs.length} ${queue.songs.length === 1 ? 'canción' : 'canciones'} en este momento`,
+                    icon_url: null
+                }
             }
             
             setTimeout(() => {
@@ -166,14 +258,20 @@ client.on("message", async (message) => {
 
 distube
     .on('playSong', (queue, song) => {
+        let modeAutoplay = queue.autoplay
         let fotoAutor = "https://image.flaticon.com/icons/png/512/49/49097.png"
         let embed = new MessageEmbed()
             .setAuthor('Está sonando', fotoAutor)
             .setDescription(`\`${song.name} | [${song.formattedDuration}]\``)
             .addField('Y la puso: (mentira ninguno de acá la pone)', `${song.user}`)
             .setColor('PURPLE')
+            .setFooter(`Volumen ${queue.volume} | Autoplay ${modeAutoplay ? 'On' : 'Off'}`)
         queue.textChannel.send(embed)
         client.user.setActivity(song.name, {type: "LISTENING"})
+        setTimeout(() => {
+            // console.log(queue.textChannel.lastMessage)
+        }, song.duration)
+        
     })
     .on('addSong', (queue, song) => {
         if(isSpotifyPlaylist === true && isMessageSent === false){
