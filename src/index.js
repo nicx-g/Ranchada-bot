@@ -3,11 +3,11 @@ require('dotenv').config();
 //Discord y Distube
 const {Client, MessageEmbed} = require('discord.js'),
     DisTube = require('distube'),
-    client = new Client(),
-    config = {
-        prefix: "-",
-        token: process.env.DISCORD_TOKEN
-    };
+    client = new Client()
+let config = {
+    prefix: "-",
+    token: process.env.DISCORD_TOKEN
+};
 //Config Distube
 client.options.http.api = "https://discord.com/api"
 const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false});
@@ -19,6 +19,7 @@ var playListLength = '';
 
 client.on('ready', () => {
     console.log(`tamos ready pa`)
+    client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
 })
 
 client.on("message", async (message) => {
@@ -28,52 +29,56 @@ client.on("message", async (message) => {
     const command = args.shift();
     let comandos = [
         {
-            name: `${config.prefix}p / ${config.prefix}play`,
-            value: `Poné lo que se te cante. PlayLists de Spotify sólo soporta hasta 100 tracks. Ej: \`${config.prefix}p marcha peronista / link de youtube / link de Spotify\`.`
-        },
-        {
-            name: `${config.prefix}stop`,
-            value: 'Vacías la queue y se detiene la música'
-        },
-        {
-            name: `${config.prefix}pause`,
-            value: 'Pausa la música. Por alguna razón que desconozco no funciona por el momento'
-        },
-        {
-            name: `${config.prefix}resume`,
-            value: 'Despausa la música'
-        },
-        {
             name: `${config.prefix}autoplay`,
             value: 'Para activar/desactivar el autoplay. Cuando suene una canción podés comprobar si está prendido o apagado'
-        },
-        {
-            name: `${config.prefix}skip / ${config.prefix}next / ${config.prefix}n`,
-            value: 'Para pasar a la siguiente canción'
-        },
-        {
-            name: `${config.prefix}queue / ${config.prefix}q`,
-            value: `Te va a tirar el listado de las primeras 20 canciones que va a sonar, si querés saber las demás canciones podés colocar otro número. Ej: \`${config.prefix}queue 20\` te va a mostrar de la canción 20 hasta la 40`
         },
         {
             name: `${config.prefix}leave`,
             value: 'Para que el bot se vaya del voice, no me lo dejes solo'
         },
         {
+            name: `${config.prefix}pause`,
+            value: 'Pausa la música. Por alguna razón que desconozco no funciona por el momento'
+        },
+        {
+            name: `${config.prefix}p / ${config.prefix}play`,
+            value: `Poné lo que se te cante. PlayLists de Spotify sólo soporta hasta 100 tracks. Ej: \`${config.prefix}p marcha peronista / link de youtube / link de Spotify\`.`
+        },
+        {
+            name: `${config.prefix}prefix`,
+            value: `Para cambiar el prefix de bot. El actual es ${config.prefix}. Ej: \`${config.prefix}prefix !\``
+        },
+        {
+            name: `${config.prefix}queue / ${config.prefix}q`,
+            value: `Te va a tirar el listado de las primeras 20 canciones que va a sonar, si querés saber las demás canciones podés colocar otro número. Ej: \`${config.prefix}queue 20\` te va a mostrar de la canción 20 hasta la 40`
+        },
+        {
+            name: `${config.prefix}remove`,
+            value: `Para eliminar una canción de la queue, podés borrarla mediante índice o la última canción. Para saber el índice de una canción lo podés ver con ${config.prefix}queue. Ej: \`${config.prefix}remove last / ${config.prefix}remove 5\``
+        },
+        {
+            name: `${config.prefix}resume`,
+            value: 'Despausa la música'
+        },
+        {
             name: `${config.prefix}setvolume`,
             value: 'Para setear el volumen, inicialmente va a estar en 25 cuando empiece una queue. Sólo va de 0 a 100 el volumen'
         },
         {
-            name: `${config.prefix}volume`,
-            value: 'Para saber cuál es el volumen actual del bot aunque ya te aparezca cuando esté sonando una canción'
+            name: `${config.prefix}skip / ${config.prefix}next / ${config.prefix}n`,
+            value: 'Para pasar a la siguiente canción'
+        },
+        {
+            name: `${config.prefix}stop`,
+            value: 'Vacías la queue y se detiene la música'
         },
         {
             name: `${config.prefix}shuffle`,
             value: 'Para poner el modo aleatorio'
         },
         {
-            name: `${config.prefix}remove`,
-            value: `Para eliminar una canción de la queue, podés borrarla mediante índice o la última canción. Para saber el índice de una canción lo podés ver con ${config.prefix}queue. Ej: \`${config.prefix}remove last / ${config.prefix}remove 5\``
+            name: `${config.prefix}volume`,
+            value: 'Para saber cuál es el volumen actual del bot aunque ya te aparezca cuando esté sonando una canción'
         },
     ]
 
@@ -152,6 +157,7 @@ client.on("message", async (message) => {
         .setDescription('Se vació la queue')
         .setColor('PURPLE')
         message.channel.send(embed)
+        client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
     }
 
     if(command == 'pause') {
@@ -160,6 +166,15 @@ client.on("message", async (message) => {
         .setDescription('Se pausó la música')
         .setColor('PURPLE')
         message.channel.send(embed)
+    }
+
+    if(command == 'prefix') {
+        let viejoPrefix = config.prefix
+        config.prefix = args.join('')
+        message.react('👌')
+        if(client.user.presence.activities[0].name === `tus órdenes. Mi prefix es: ${viejoPrefix}`){
+            client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
+        }
     }
 
     if(command == 'resume') {
@@ -197,6 +212,7 @@ client.on("message", async (message) => {
     if(command == 'leave'){
         const leave = await message.member.voice.channel.leave()
         message.react('👋')
+        client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
     }
 
     if(command == 'setvolume'){
@@ -258,20 +274,16 @@ client.on("message", async (message) => {
 
 distube
     .on('playSong', (queue, song) => {
-        let ultimosMensajesBot = [];
         queue.textChannel.messages.cache.map(item => {
-            if(item.author.username == client.user.username){
-                let mensajeDePlaySong = item.embeds ? item.embeds.filter(item => item.author.name === 'Está sonando') : ''
-                if(mensajeDePlaySong.length !== 0){
-                    ultimosMensajesBot.push(item.id)
-                }
+            if(item.embeds.length !== 0){
+                item.embeds.map(item2 => {
+                    if(item2.author !== null){
+                        if(item2.author.name === 'Está sonando')
+                        item.delete()
+                    }
+                })
             }
         })
-        if(ultimosMensajesBot.length !== 0){
-            queue.textChannel.messages.fetch(ultimosMensajesBot[ultimosMensajesBot.length - 1])
-            .then(message => queue.textChannel.messages.delete(message))
-            .catch(error => console.log(error))
-        }
         let modeAutoplay = queue.autoplay
         let fotoAutor = "https://image.flaticon.com/icons/png/512/49/49097.png"
         let embed = new MessageEmbed()
@@ -284,7 +296,8 @@ distube
         client.user.setActivity(song.name, {type: "LISTENING"})
         setTimeout(() => {
                 client.user.lastMessage.delete()
-        }, Number(`${song.duration}000`))
+                client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
+        }, Number(`${song.duration}000` - 500))
     })
     .on('addSong', (queue, song) => {
         if(isSpotifyPlaylist === true && isMessageSent === false){
@@ -306,7 +319,7 @@ distube
     .on('error', (channel, error) => {
         console.log(error)
         let embed = new MessageEmbed()
-        .setDescription(`Se rompió algo, intentalo de nuevo, probá más tarde o avisale al corren\nError: \`${error}\``)
+        .setDescription(`Se rompió algo, intentalo de nuevo, probá más tarde o avisale al corren\n\nError: \`${error}\``)
         .setColor('PURPLE')
         channel.send(embed)
     })
