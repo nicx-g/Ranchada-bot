@@ -18,7 +18,7 @@ var isMessageSent = false;
 var playListLength = '';
 
 client.on('ready', () => {
-    console.log('tamos ready pa')
+    console.log(`tamos ready pa`)
 })
 
 client.on("message", async (message) => {
@@ -258,6 +258,20 @@ client.on("message", async (message) => {
 
 distube
     .on('playSong', (queue, song) => {
+        let ultimosMensajesBot = [];
+        queue.textChannel.messages.cache.map(item => {
+            if(item.author.username == client.user.username){
+                let mensajeDePlaySong = item.embeds ? item.embeds.filter(item => item.author.name === 'Está sonando') : ''
+                if(mensajeDePlaySong.length !== 0){
+                    ultimosMensajesBot.push(item.id)
+                }
+            }
+        })
+        if(ultimosMensajesBot.length !== 0){
+            queue.textChannel.messages.fetch(ultimosMensajesBot[ultimosMensajesBot.length - 1])
+            .then(message => queue.textChannel.messages.delete(message))
+            .catch(error => console.log(error))
+        }
         let modeAutoplay = queue.autoplay
         let fotoAutor = "https://image.flaticon.com/icons/png/512/49/49097.png"
         let embed = new MessageEmbed()
@@ -269,9 +283,8 @@ distube
         queue.textChannel.send(embed)
         client.user.setActivity(song.name, {type: "LISTENING"})
         setTimeout(() => {
-            // console.log(queue.textChannel.lastMessage)
-        }, song.duration)
-        
+                client.user.lastMessage.delete()
+        }, Number(`${song.duration}000`))
     })
     .on('addSong', (queue, song) => {
         if(isSpotifyPlaylist === true && isMessageSent === false){
@@ -293,7 +306,7 @@ distube
     .on('error', (channel, error) => {
         console.log(error)
         let embed = new MessageEmbed()
-        .setDescription('Se rompió algo, intentalo de nuevo, probá más tarde o avisale al corren')
+        .setDescription(`Se rompió algo, intentalo de nuevo, probá más tarde o avisale al corren\nError: \`${error}\``)
         .setColor('PURPLE')
         channel.send(embed)
     })
