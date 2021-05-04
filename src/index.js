@@ -3,14 +3,15 @@ require('dotenv').config();
 //Discord y Distube
 const {Client, MessageEmbed} = require('discord.js'),
     DisTube = require('distube'),
-    client = new Client()
+    client = new Client(),
+    youtubeCookie=process.env.YOUTUBE_COOKIE
 let config = {
     prefix: "-",
     token: process.env.DISCORD_TOKEN
 };
 //Config Distube
 client.options.http.api = "https://discord.com/api"
-const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false});
+const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false, youtubeCookie});
 //Spotify Url info
 const {getTracks} = require("spotify-url-info")
 var isSpotifyPlaylist = false;
@@ -53,7 +54,7 @@ client.on("message", async (message) => {
             value: `Te va a tirar el listado de las primeras 20 canciones que va a sonar, si querés saber las demás canciones podés colocar otro número. Ej: \`${config.prefix}queue 20\` te va a mostrar de la canción 20 hasta la 40`
         },
         {
-            name: `${config.prefix}remove`,
+            name: `${config.prefix}remove / ${config.prefix}delete`,
             value: `Para eliminar una canción de la queue, podés borrarla mediante índice o la última canción. Para saber el índice de una canción lo podés ver con ${config.prefix}queue. Ej: \`${config.prefix}remove last / ${config.prefix}remove 5\``
         },
         {
@@ -146,7 +147,13 @@ client.on("message", async (message) => {
                 distube.play(message, item)
             })
             isMessageSent = false
-        } else {
+        } else if(args.join(' ').includes("https://open.spotify.com/track")){
+            let dataPlayList = await getTracks(args.join(' '))
+            let cancionYArtista = `${dataPlayList[0].name} ${dataPlayList[0].artists[0].name}`
+            if(cancionYArtista.length !== 0){
+                distube.play(message, cancionYArtista)
+            }
+        } else{
             distube.play(message, args.join(" "))
         }
     }
@@ -295,8 +302,17 @@ distube
         queue.textChannel.send(embed)
         client.user.setActivity(song.name, {type: "LISTENING"})
         setTimeout(() => {
-                client.user.lastMessage.delete()
-                client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
+            queue.textChannel.messages.cache.map(item => {
+                if(item.embeds.length !== 0){
+                    item.embeds.map(item2 => {
+                        if(item2.author !== null){
+                            if(item2.author.name === 'Está sonando')
+                            item.delete()
+                        }
+                    })
+                }
+            })
+            client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
         }, Number(`${song.duration}000` - 500))
     })
     .on('addSong', (queue, song) => {
@@ -328,4 +344,4 @@ distube
         queue.autoplay = "on"
     })
 
-    client.login(config.token)
+client.login(config.token)
