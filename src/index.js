@@ -14,9 +14,11 @@ client.options.http.api = "https://discord.com/api"
 const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false, youtubeCookie});
 //Spotify Url info
 const {getTracks} = require("spotify-url-info")
-var isSpotifyPlaylist = false;
-var isMessageSent = false;
-var playListLength = '';
+let isSpotifyPlaylist = false,
+    isMessageSent = false,
+    playListLength = '',
+    isSkiped = false
+
 
 client.on('ready', () => {
     console.log(`tamos ready pa`)
@@ -95,7 +97,7 @@ client.on("message", async (message) => {
             }
         })
         preComandosFiltrados.map(item => {
-            if(Array.isArray(item) === true){
+            if(Array.isArray(item)){
                 item.map(item => comandosFiltrados.push(item))
             } else {
                 comandosFiltrados.push(item)
@@ -109,7 +111,7 @@ client.on("message", async (message) => {
         return esComando
     }
     let esComando = comprobarComandoCorrecto()
-    if(esComando === false && command !== 'help') {
+    if(!esComando && command !== 'help') {
         let embed = new MessageEmbed()
         .setDescription(`Le pifiaste al comando padre. Poné \`${config.prefix}help\` para ver todos los comandos. Si querés usar uno y no está decile al corren`)
         .setColor('PURPLE')
@@ -212,6 +214,7 @@ client.on("message", async (message) => {
     }
 
     if(command == 'skip' || command == 'next' || command == 'n') {
+        isSkiped = true
         distube.skip(message);
         message.react('522626958899675146')
     }
@@ -281,6 +284,7 @@ client.on("message", async (message) => {
 
 distube
     .on('playSong', (queue, song) => {
+        let songMiliseconds = song.duration * 1000;
         queue.textChannel.messages.cache.map(item => {
             if(item.embeds.length !== 0){
                 item.embeds.map(item2 => {
@@ -291,38 +295,41 @@ distube
                 })
             }
         })
-        let modeAutoplay = queue.autoplay
         let fotoAutor = "https://image.flaticon.com/icons/png/512/49/49097.png"
         let embed = new MessageEmbed()
             .setAuthor('Está sonando', fotoAutor)
             .setDescription(`\`${song.name} | [${song.formattedDuration}]\``)
             .addField('Y la puso: (mentira ninguno de acá la pone)', `${song.user}`)
             .setColor('PURPLE')
-            .setFooter(`Volumen ${queue.volume} | Autoplay ${modeAutoplay ? 'On' : 'Off'}`)
+            .setFooter(`Volumen ${queue.volume} | Autoplay ${queue.autoplay ? 'On' : 'Off'}`)
         queue.textChannel.send(embed)
         client.user.setActivity(song.name, {type: "LISTENING"})
         setTimeout(() => {
-            queue.textChannel.messages.cache.map(item => {
-                if(item.embeds.length !== 0){
-                    item.embeds.map(item2 => {
-                        if(item2.author !== null){
-                            if(item2.author.name === 'Está sonando')
-                            item.delete()
-                        }
-                    })
-                }
-            })
-            client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
-        }, Number(`${song.duration}000` - 500))
+            if(!isSkiped){
+                queue.textChannel.messages.cache.map(item => {
+                    if(item.embeds.length !== 0){
+                        item.embeds.map(item2 => {
+                            if(item2.author !== null){
+                                if(item2.author.name === 'Está sonando')
+                                item.delete()
+                            }
+                        })
+                    }
+                })
+                client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
+            } else {
+                isSkiped = false
+            }
+        }, songMiliseconds)
     })
     .on('addSong', (queue, song) => {
-        if(isSpotifyPlaylist === true && isMessageSent === false){
+        if(isSpotifyPlaylist && !isMessageSent){
             isMessageSent = true;
             let embed = new MessageEmbed()
             .setDescription(`\`Se agregaron ${playListLength} canciones a la queue\` [${queue.songs[0].user}]`)
             .setColor('PURPLE')
             queue.textChannel.send(embed)
-        } else if(isSpotifyPlaylist === false){
+        } else if(!isSpotifyPlaylist){
             let fotoAutor = "https://image.flaticon.com/icons/png/512/49/49097.png"
             let embed = new MessageEmbed()
                 .setAuthor('Se agregó una nueva canción', fotoAutor)
