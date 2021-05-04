@@ -3,14 +3,15 @@ require('dotenv').config();
 //Discord y Distube
 const {Client, MessageEmbed} = require('discord.js'),
     DisTube = require('distube'),
-    client = new Client()
+    client = new Client(),
+    youtubeCookie=process.env.YOUTUBE_COOKIE
 let config = {
-    prefix: "-",
+    prefix: "!",
     token: process.env.DISCORD_TOKEN
 };
 //Config Distube
 client.options.http.api = "https://discord.com/api"
-const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false});
+const distube = new DisTube(client, { searchSongs: false, emitNewSongOnly: true, leaveOnStop: false, youtubeCookie});
 //Spotify Url info
 const {getTracks} = require("spotify-url-info")
 var isSpotifyPlaylist = false;
@@ -20,6 +21,25 @@ var playListLength = '';
 client.on('ready', () => {
     console.log(`tamos ready pa`)
     client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
+    let cambiarFoto = () => {
+        let fotosUrl = [
+            "https://cdn.discordapp.com/attachments/417953532013051915/836835758526169108/720.png",
+            "https://cdn.discordapp.com/attachments/417953532013051915/836835765714550784/maxresdefault.png",
+            "https://cdn.discordapp.com/attachments/417953532013051915/836835774144970752/0b7e9750605fa6bfb635afcb80ab2abe.png",
+            "https://cdn.discordapp.com/attachments/417953532013051915/836835848900182046/f860c6f2cce9c741a62afcf8ea56193b.png",
+            "https://cdn.discordapp.com/attachments/417953532013051915/836835881528197140/pepe4.jpg",
+            "https://cdn.discordapp.com/attachments/417953532013051915/836835911777779783/Pepe.jpg",
+            "https://cdn.discordapp.com/attachments/417953532013051915/836836706669559838/bfa48f740a7448648f7fb932ecc62299.png",
+            "https://cdn.discordapp.com/attachments/417953532013051915/836836976249274378/d0e6c9f95b25264a57108ae10583d48028cdac27_full.png",
+            "https://cdn.discordapp.com/attachments/417953532013051915/836837585934483488/safe_image.png"
+        ]
+        let randomNumber = Math.floor(Math.random() * (fotosUrl.length - 0)) + 0
+        console.log(randomNumber)
+        client.user.setAvatar(fotosUrl[randomNumber])
+        .then(user => console.log('cambié la foto'))
+        .catch(error => console.log('algo salió mal padre', error))
+    }
+    setInterval(cambiarFoto, 600000)
 })
 
 client.on("message", async (message) => {
@@ -53,7 +73,7 @@ client.on("message", async (message) => {
             value: `Te va a tirar el listado de las primeras 20 canciones que va a sonar, si querés saber las demás canciones podés colocar otro número. Ej: \`${config.prefix}queue 20\` te va a mostrar de la canción 20 hasta la 40`
         },
         {
-            name: `${config.prefix}remove`,
+            name: `${config.prefix}remove / ${config.prefix}delete`,
             value: `Para eliminar una canción de la queue, podés borrarla mediante índice o la última canción. Para saber el índice de una canción lo podés ver con ${config.prefix}queue. Ej: \`${config.prefix}remove last / ${config.prefix}remove 5\``
         },
         {
@@ -295,8 +315,17 @@ distube
         queue.textChannel.send(embed)
         client.user.setActivity(song.name, {type: "LISTENING"})
         setTimeout(() => {
-                client.user.lastMessage.delete()
-                client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
+            queue.textChannel.messages.cache.map(item => {
+                if(item.embeds.length !== 0){
+                    item.embeds.map(item2 => {
+                        if(item2.author !== null){
+                            if(item2.author.name === 'Está sonando')
+                            item.delete()
+                        }
+                    })
+                }
+            })
+            client.user.setActivity(`tus órdenes. Mi prefix es: ${config.prefix}`, {type: "LISTENING"})
         }, Number(`${song.duration}000` - 500))
     })
     .on('addSong', (queue, song) => {
@@ -328,4 +357,4 @@ distube
         queue.autoplay = "on"
     })
 
-    client.login(config.token)
+client.login(config.token)
